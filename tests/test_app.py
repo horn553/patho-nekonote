@@ -17,17 +17,12 @@ from pydicom.uid import LegacyConvertedEnhancedCTImageStorage
 @pytest.fixture()
 def client(tmp_path, monkeypatch):
     monkeypatch.setenv("IMG2DICOM_DATA_DIR", str(tmp_path))
-    monkeypatch.setenv("IMG2DICOM_PASSWORD", "test-password")
     import app.main as main
 
     test_settings = main.Settings()
     monkeypatch.setattr(main, "settings", test_settings)
     main.job_queue = main.asyncio.Queue()
     with TestClient(main.app) as test_client:
-        login = test_client.post(
-            "/login", data={"password": "test-password"}, follow_redirects=False
-        )
-        assert login.status_code == 303
         yield test_client, test_settings
 
 
@@ -308,25 +303,16 @@ def test_uploader_link_feature_is_removed(client):
     assert test_client.get("/proceed", follow_redirects=False).status_code == 404
 
 
-def test_password_gate_blocks_anonymous_requests(client):
+def test_authentication_routes_are_removed(client):
     test_client, _ = client
-    test_client.cookies.clear()
-    assert test_client.get("/", follow_redirects=False).status_code == 303
-    api_response = test_client.get("/api/jobs")
-    assert api_response.status_code == 401
-    assert test_client.get("/api/health").status_code == 200
-
-    rejected = test_client.post(
-        "/login", data={"password": "wrong"}, follow_redirects=False
-    )
-    assert rejected.status_code == 303
-    assert rejected.headers["location"] == "/login?error=1"
-
-    accepted = test_client.post(
-        "/login", data={"password": "test-password"}, follow_redirects=False
-    )
-    assert accepted.status_code == 303
     assert test_client.get("/").status_code == 200
+    assert test_client.get("/api/jobs").status_code == 200
+    assert test_client.get("/api/health").status_code == 200
+    assert test_client.get("/login").status_code == 404
+    assert test_client.post("/login").status_code == 404
+    assert test_client.post("/logout").status_code == 404
+    assert test_client.get("/static/login.html").status_code == 404
+    assert test_client.get("/static/login.js").status_code == 404
 
 
 def test_local_conversion_ui_and_security_headers(client):
@@ -360,7 +346,6 @@ def test_local_conversion_ui_and_security_headers(client):
 
     page_response = test_client.get("/")
     page = page_response.text
-    login_page = test_client.get("/login").text
     script = test_client.get("/static/app.js").text
     dicom_script = test_client.get("/static/dicom.mjs").text
     avatar = test_client.get("/static/github-avatar.png")
@@ -368,9 +353,8 @@ def test_local_conversion_ui_and_security_headers(client):
     csp = page_response.headers["content-security-policy"]
     assert "worker-src 'self'" in csp
     assert "'wasm-unsafe-eval'" in csp
-    assert "frame-src https://docs.google.com" in csp
+    assert "docs.google.com" not in csp
     assert '<html lang="ja">' in page
-    assert '<html lang="ja">' in login_page
     assert "ねこのて" in page
     assert "🐱" not in page
     assert "🩻" not in page
@@ -391,13 +375,9 @@ def test_local_conversion_ui_and_security_headers(client):
     assert "Working" not in page
     assert "Finished" not in page
     assert "Loading previous work" not in page
-    assert "ねこのて" in login_page
-    assert "🐱" not in login_page
-    assert 'src="./static/github-avatar.png"' in login_page
     assert avatar.headers["content-type"] == "image/png"
     assert "convertImagesToDicom" in script
     assert "convertPdfToJpg" in script
-    assert "dicomManual.hidden = isPdf" in script
     assert 'fetch("/api/jobs"' not in script
     assert "/api/pdf-jobs" not in script
     assert "FormData" not in script
@@ -416,19 +396,15 @@ def test_local_conversion_ui_and_security_headers(client):
     assert "uploader-settings" not in page
     assert "/api/settings/uploader" not in script
     assert 'href="/proceed"' not in page
-    assert 'id="dicom-manual"' in page
-    assert page.index('id="dicom-manual"') < page.index('class="upload-card"')
-    assert "docs.google.com/presentation/d/e/2PACX-1vR02pgEJWTVy9RlHzy6cSzPfAJdwp2-IKGEC3dktK3gOWkHZFdqWKw-lEkrF0H0LHf9jlpNAuXQp9cT/pubembed" in page
-    assert 'loading="lazy"' in page
-    assert "DICOMエクスポートマニュアル" in page
+    assert "dicom-manual" not in page
+    assert "docs.google.com" not in page
+    assert "DICOMエクスポートマニュアル" not in page
     assert 'href="./static/oss-licenses.html"' in page
-    assert "https://github.com/horn553/patho-nekonote-public" in page
+    assert "https://github.com/horn553/patho-nekonote" in page
     assert "JSZip 3.10.1" in licenses
     assert "MIT License" in licenses
     assert "PDF.js 6.1.200" in licenses
     assert "Apache License 2.0" in licenses
-    assert "ログイン" in login_page
-    assert "パスワードが正しくありません" in login_page
     for english_copy in (
         "Choose a ZIP file",
         "Choose file",
@@ -438,7 +414,6 @@ def test_local_conversion_ui_and_security_headers(client):
         "Welcome back",
     ):
         assert english_copy not in page
-        assert english_copy not in login_page
 
 
 def test_uploaded_job_can_be_discarded_before_conversion(client):

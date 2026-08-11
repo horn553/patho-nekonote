@@ -15,9 +15,8 @@ def main() -> None:
     shutil.copytree(STATIC_DIR, published_assets)
     shutil.copy2(STATIC_DIR / "index.html", OUTPUT_DIR / "index.html")
 
-    # These server entry points are not part of the browser-only Pages build.
-    for server_only_file in ("index.html", "login.html", "login.js"):
-        (published_assets / server_only_file).unlink(missing_ok=True)
+    # The root copy is the Pages entry point; avoid publishing a duplicate.
+    (published_assets / "index.html").unlink()
 
     (OUTPUT_DIR / ".nojekyll").touch()
 

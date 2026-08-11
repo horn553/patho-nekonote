@@ -30,7 +30,6 @@ const startConversion = document.querySelector("#start-conversion");
 const resultPanel = document.querySelector("#result-panel");
 const resultSummary = document.querySelector("#result-summary");
 const downloadResult = document.querySelector("#download-result");
-const dicomManual = document.querySelector("#dicom-manual");
 
 let activeTool = "dicom";
 let selectedFile = null;
@@ -123,7 +122,6 @@ function activateTool(tool) {
     ? "各ページをブラウザ内で高画質JPGとして変換します。"
     : "PNG・JPEGスライスを並べ、1つのマルチフレームDCMにまとめます。";
   dicomFields.hidden = isPdf;
-  dicomManual.hidden = isPdf;
   resetSelection();
 }
 

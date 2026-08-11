@@ -27,4 +27,6 @@ def test_pages_build_retains_both_converters_and_omits_server_only_ui():
     assert not (SITE / "static" / "login.html").exists()
     assert "uploader-settings" not in page
     assert "/api/settings/uploader" not in script
-    assert "https://github.com/horn553/patho-nekonote-public" in page
+    assert "dicom-manual" not in page
+    assert "DICOMエクスポートマニュアル" not in page
+    assert "https://github.com/horn553/patho-nekonote" in page

@@ -1,13 +1,11 @@
 from __future__ import annotations
 
 import asyncio
-import hashlib
 import io
 import json
 import math
 import os
 import re
-import secrets
 import shutil
 import sqlite3
 import stat
@@ -21,8 +19,8 @@ from datetime import UTC, date, datetime, timedelta
 from pathlib import Path, PurePosixPath
 from typing import Any
 
-from fastapi import FastAPI, File, Form, HTTPException, Request, Response, UploadFile
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
+from fastapi import FastAPI, File, HTTPException, Request, Response, UploadFile
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from PIL import Image, UnidentifiedImageError
 import pymupdf
@@ -47,7 +45,6 @@ PDF_DPI = 200
 JPEG_QUALITY = 90
 TERMINAL_STATUSES = {"completed", "failed"}
 ACTIVE_STATUSES = {"uploaded", "queued", "processing"}
-SESSION_COOKIE = "img2dicom_session"
 
 
 def utc_now() -> str:
@@ -91,14 +88,7 @@ class Settings:
         self.slice_thickness = env_float(
             "IMG2DICOM_SLICE_THICKNESS_MM", 1.0
         )
-        self.password = os.getenv("IMG2DICOM_PASSWORD", "")
         self.retention_hours = env_int("IMG2DICOM_RETENTION_HOURS", 48)
-
-    @property
-    def session_token(self) -> str:
-        return hashlib.sha256(
-            f"img2dicom-session:{self.password}".encode("utf-8")
-        ).hexdigest()
 
 
 settings = Settings()
@@ -797,24 +787,6 @@ class JobStartRequest(BaseModel):
 
 
 @app.middleware("http")
-async def password_gate(request: Request, call_next):
-    if (
-        not settings.password
-        or request.url.path in {"/login", "/api/health"}
-        or request.url.path.startswith("/static/")
-    ):
-        return await call_next(request)
-
-    supplied = request.cookies.get(SESSION_COOKIE, "")
-    if secrets.compare_digest(supplied, settings.session_token):
-        return await call_next(request)
-
-    if request.url.path.startswith("/api/"):
-        return JSONResponse(status_code=401, content={"detail": "ログインが必要です"})
-    return RedirectResponse("/login", status_code=303)
-
-
-@app.middleware("http")
 async def security_headers(request: Request, call_next):
     response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
@@ -823,7 +795,7 @@ async def security_headers(request: Request, call_next):
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; "
         "img-src 'self' data: blob:; connect-src 'self'; worker-src 'self'; "
-        "frame-src https://docs.google.com; object-src 'none'; base-uri 'self'; "
+        "object-src 'none'; base-uri 'self'; "
         "form-action 'self'; frame-ancestors 'none'"
     )
     # The HTML and JavaScript use stable URLs. Do not let a browser combine an
@@ -831,7 +803,7 @@ async def security_headers(request: Request, call_next):
     if request.url.path.startswith("/static/vendor/"):
         response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
     elif (
-        request.url.path in {"/", "/login"}
+        request.url.path == "/"
         or request.url.path.startswith("/static/")
         or request.url.path.startswith("/api/")
     ):
@@ -842,38 +814,6 @@ async def security_headers(request: Request, call_next):
 @app.get("/", response_class=HTMLResponse)
 async def index() -> FileResponse:
     return FileResponse(STATIC_DIR / "index.html")
-
-
-@app.get("/login", response_class=HTMLResponse)
-async def login_page() -> FileResponse:
-    if not settings.password:
-        return RedirectResponse("/", status_code=303)
-    return FileResponse(STATIC_DIR / "login.html")
-
-
-@app.post("/login")
-async def login(password: str = Form(...)) -> RedirectResponse:
-    if not settings.password:
-        return RedirectResponse("/", status_code=303)
-    if not secrets.compare_digest(password, settings.password):
-        return RedirectResponse("/login?error=1", status_code=303)
-    response = RedirectResponse("/", status_code=303)
-    response.set_cookie(
-        SESSION_COOKIE,
-        settings.session_token,
-        max_age=30 * 24 * 60 * 60,
-        httponly=True,
-        samesite="strict",
-        path="/",
-    )
-    return response
-
-
-@app.post("/logout")
-async def logout() -> RedirectResponse:
-    response = RedirectResponse("/login", status_code=303)
-    response.delete_cookie(SESSION_COOKIE, path="/")
-    return response
 
 
 @app.get("/api/health")

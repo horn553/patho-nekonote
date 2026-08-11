@@ -1,6 +1,6 @@
 # ねこのて
 
-Public repository: <https://github.com/horn553/patho-nekonote-public>
+Public repository: <https://github.com/horn553/patho-nekonote>
 
 A small self-hosted collection of file conversion tools. It converts a naturally
 ordered ZIP of PNG or JPEG CT slices into one multi-frame DICOM file, and renders
@@ -35,18 +35,14 @@ IMG2DICOM_DATA_DIR=/mnt/hdd/img2dicom
 IMG2DICOM_PORT=8000
 IMG2DICOM_UID=1000
 IMG2DICOM_GID=1000
-IMG2DICOM_PASSWORD=choose-a-local-password
 ```
 
 Set the UID/GID to the owner of the HDD directory (`id -u` and `id -g`). They
 default to `1000:1000`, matching the usual first Linux user and this host.
 
 The app binds to localhost by default. For trusted-LAN access, set
-`IMG2DICOM_BIND_ADDRESS=0.0.0.0` and configure `IMG2DICOM_PASSWORD`. This enables
-a lightweight shared-password login with a 30-day browser session. It is a
-casual LAN gate, not a substitute for HTTPS, rate limiting, or a proper identity
-provider. Do not expose it directly to the internet; use an authenticated HTTPS
-reverse proxy if remote access is needed.
+`IMG2DICOM_BIND_ADDRESS=0.0.0.0`. The application does not provide authentication;
+use an authenticated HTTPS reverse proxy before allowing remote access.
 
 ## Input and output
 
@@ -108,7 +104,7 @@ docker run --rm -v "$PWD:/src:ro" -w /src img2dicom \
 
 ## Architecture
 
-FastAPI serves the authenticated shell and locally bundled static assets. The
+FastAPI serves the shell and locally bundled static assets. The
 browser uses JSZip 3.10.1, PDF.js 6.1.200, and the app's Explicit VR Little Endian
 Legacy Converted Enhanced CT multi-frame writer. No CDN or remote conversion
 service is used. The SQLite database retains compatibility with jobs created by
@@ -121,7 +117,7 @@ linked from the app's **OSSライセンス** page.
 ## GitHub Pages
 
 The GitHub Pages build publishes the browser-only DICOM and PDF conversion tools.
-Authentication and the legacy server job API remain available only when running
-the FastAPI application. Pushes to `main` deploy through
+The legacy server job API remains available only when running the FastAPI
+application. Pushes to `main` deploy through
 `.github/workflows/deploy-pages.yml` after the Pages source is enabled for the
 repository.

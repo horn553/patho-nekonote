@@ -18,9 +18,6 @@
           <h1>ねこのて</h1>
           <p>ブラウザだけで完結する、安全なファイル変換。</p>
         </div>
-        <form class="logout" action="/logout" method="post">
-          <button class="secondary" type="submit">ログアウト</button>
-        </form>
       </header>
 
       <section class="offline-banner" aria-label="オフライン処理について">
@@ -52,25 +49,6 @@
           <span><strong>PDF → JPG</strong><small>1ページにつき1画像</small></span>
         </button>
       </nav>
-
-      <section id="dicom-manual" class="dicom-manual" aria-labelledby="manual-title">
-        <div class="manual-heading">
-          <div>
-            <span class="manual-kicker">エクスポートガイド</span>
-            <h2 id="manual-title">DICOMエクスポートマニュアル</h2>
-          </div>
-        </div>
-        <div class="manual-frame">
-          <iframe
-            src="https://docs.google.com/presentation/d/e/2PACX-1vR02pgEJWTVy9RlHzy6cSzPfAJdwp2-IKGEC3dktK3gOWkHZFdqWKw-lEkrF0H0LHf9jlpNAuXQp9cT/pubembed?start=false&amp;loop=false&amp;delayms=3000"
-            title="DICOMエクスポートマニュアル"
-            width="960"
-            height="569"
-            loading="lazy"
-            allowfullscreen>
-          </iframe>
-        </div>
-      </section>
 
       <section class="upload-card" aria-labelledby="upload-title">
         <div id="drop-zone" class="drop-zone" tabindex="0" role="button">
@@ -125,7 +103,7 @@
         <p>変換処理は完全オフラインです。ファイルや結果はアプリに保存されません。生成されたDICOMデータは診断用途には使用できません。</p>
         <nav aria-label="関連リンク">
           <a href="./static/oss-licenses.html">OSSライセンス</a>
-          <a href="https://github.com/horn553/patho-nekonote-public" target="_blank" rel="noopener noreferrer">GitHubリポジトリ</a>
+          <a href="https://github.com/horn553/patho-nekonote" target="_blank" rel="noopener noreferrer">GitHubリポジトリ</a>
         </nav>
       </footer>
     </main>
