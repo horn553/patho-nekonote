@@ -1,0 +1,25 @@
+services:
+  img2dicom:
+    build: .
+    container_name: img2dicom
+    restart: unless-stopped
+    user: "${IMG2DICOM_UID:-1000}:${IMG2DICOM_GID:-1000}"
+    ports:
+      - "${IMG2DICOM_BIND_ADDRESS:-127.0.0.1}:${IMG2DICOM_PORT:-8000}:8000"
+    environment:
+      IMG2DICOM_DATA_DIR: /data
+      IMG2DICOM_PASSWORD: ${IMG2DICOM_PASSWORD:-}
+      IMG2DICOM_RETENTION_HOURS: ${IMG2DICOM_RETENTION_HOURS:-48}
+      IMG2DICOM_MAX_UPLOAD_GB: ${IMG2DICOM_MAX_UPLOAD_GB:-20}
+      IMG2DICOM_MAX_UNCOMPRESSED_GB: ${IMG2DICOM_MAX_UNCOMPRESSED_GB:-100}
+      IMG2DICOM_MAX_FILES: ${IMG2DICOM_MAX_FILES:-10000}
+      IMG2DICOM_PIXEL_SPACING_MM: ${IMG2DICOM_PIXEL_SPACING_MM:-1.0}
+      IMG2DICOM_SLICE_THICKNESS_MM: ${IMG2DICOM_SLICE_THICKNESS_MM:-1.0}
+    volumes:
+      - type: bind
+        source: ${IMG2DICOM_DATA_DIR:-/mnt/hdd/img2dicom}
+        target: /data
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL

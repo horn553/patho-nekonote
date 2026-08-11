@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="DICOM画像とPDFをブラウザ内で完全オフライン変換します。">
+    <title>ねこのて</title>
+    <link rel="icon" href="./static/github-avatar.png" type="image/png">
+    <link rel="stylesheet" href="./static/styles.css">
+    <script src="./static/vendor/jszip-3.10.1.min.js"></script>
+    <script src="./static/app.js" type="module"></script>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div class="mark" aria-hidden="true"><img src="./static/github-avatar.png" alt=""></div>
+        <div>
+          <h1>ねこのて</h1>
+          <p>ブラウザだけで完結する、安全なファイル変換。</p>
+        </div>
+        <form class="logout" action="/logout" method="post">
+          <button class="secondary" type="submit">ログアウト</button>
+        </form>
+      </header>
+
+      <section class="offline-banner" aria-label="オフライン処理について">
+        <svg viewBox="0 0 32 32" aria-hidden="true">
+          <path d="M9 14v-3a7 7 0 0 1 14 0v3"/>
+          <rect x="6" y="14" width="20" height="14" rx="4"/>
+          <path d="M16 19v4"/>
+        </svg>
+        <div>
+          <strong>100%オフライン変換</strong>
+          <span>ファイルはアップロードされません。すべてこのブラウザ内だけで処理されます。</span>
+        </div>
+      </section>
+
+      <nav class="tool-picker" aria-label="変換ツール">
+        <button class="tool-option active" type="button" data-tool="dicom" aria-pressed="true">
+          <svg class="tool-icon" viewBox="0 0 32 32" aria-hidden="true">
+            <rect x="5" y="4" width="22" height="24" rx="4"/>
+            <circle cx="16" cy="16" r="7"/>
+            <path d="M10 16h12M16 10v12"/>
+          </svg>
+          <span><strong>画像 → マルチフレームDCM</strong><small>CTを1ファイルで出力</small></span>
+        </button>
+        <button class="tool-option" type="button" data-tool="pdf" aria-pressed="false">
+          <svg class="tool-icon" viewBox="0 0 32 32" aria-hidden="true">
+            <path d="M8 3h11l6 6v20H8z"/>
+            <path d="M19 3v7h6M11.5 23l4-5 3 3 2-2.5 2.5 4.5z"/>
+          </svg>
+          <span><strong>PDF → JPG</strong><small>1ページにつき1画像</small></span>
+        </button>
+      </nav>
+
+      <section id="dicom-manual" class="dicom-manual" aria-labelledby="manual-title">
+        <div class="manual-heading">
+          <div>
+            <span class="manual-kicker">エクスポートガイド</span>
+            <h2 id="manual-title">DICOMエクスポートマニュアル</h2>
+          </div>
+        </div>
+        <div class="manual-frame">
+          <iframe
+            src="https://docs.google.com/presentation/d/e/2PACX-1vR02pgEJWTVy9RlHzy6cSzPfAJdwp2-IKGEC3dktK3gOWkHZFdqWKw-lEkrF0H0LHf9jlpNAuXQp9cT/pubembed?start=false&amp;loop=false&amp;delayms=3000"
+            title="DICOMエクスポートマニュアル"
+            width="960"
+            height="569"
+            loading="lazy"
+            allowfullscreen>
+          </iframe>
+        </div>
+      </section>
+
+      <section class="upload-card" aria-labelledby="upload-title">
+        <div id="drop-zone" class="drop-zone" tabindex="0" role="button">
+          <input id="file-input" type="file" accept=".zip,application/zip" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 13v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/>
+          </svg>
+          <h2 id="upload-title">ZIPファイルを選択</h2>
+          <p id="upload-help">PNG・JPEGスライスを並べ、1つのマルチフレームDCMにまとめます。</p>
+          <button id="choose-button" type="button">ファイルを選択</button>
+        </div>
+        <div id="upload-status" class="upload-status" hidden>
+          <div class="status-line">
+            <span id="upload-name"></span>
+            <span id="progress-label">準備完了</span>
+          </div>
+          <div class="progress-track"><div id="upload-progress" class="progress-bar"></div></div>
+        </div>
+        <form id="conversion-form" class="conversion-form">
+          <div id="dicom-fields" class="conversion-fields">
+            <label for="study-date">
+              <span>検査日</span>
+              <input id="study-date" type="date" required>
+            </label>
+            <label for="patient-id">
+              <span>患者ID</span>
+              <input id="patient-id" type="text" maxlength="64" autocomplete="off">
+            </label>
+          </div>
+          <div class="conversion-submit">
+            <p id="conversion-state">ZIPファイルを選択すると、ローカル変換を開始できます。</p>
+            <div class="conversion-buttons">
+              <button id="clear-file" class="secondary" type="button" disabled>ファイルを解除</button>
+              <button id="start-conversion" type="submit" disabled>変換を開始</button>
+            </div>
+          </div>
+        </form>
+        <p id="message" class="message" role="status" aria-live="polite"></p>
+      </section>
+
+      <section id="result-panel" class="result-panel" aria-labelledby="result-title" hidden>
+        <div>
+          <span class="result-kicker">変換完了</span>
+          <h2 id="result-title">変換済みファイルをダウンロード</h2>
+          <p id="result-summary"></p>
+          <p class="result-lifetime">結果はこのタブ内だけに保持され、ページを再読み込みすると消去されます。</p>
+        </div>
+        <a id="download-result" class="download" href="#" download>結果をダウンロード</a>
+      </section>
+
+      <footer>
+        <p>変換処理は完全オフラインです。ファイルや結果はアプリに保存されません。生成されたDICOMデータは診断用途には使用できません。</p>
+        <nav aria-label="関連リンク">
+          <a href="./static/oss-licenses.html">OSSライセンス</a>
+          <a href="https://github.com/horn553/patho-nekonote-public" target="_blank" rel="noopener noreferrer">GitHubリポジトリ</a>
+        </nav>
+      </footer>
+    </main>
+  </body>
+</html>
